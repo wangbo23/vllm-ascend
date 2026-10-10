@@ -1503,6 +1503,12 @@ Once the preparation is done, start the server on each node:
     python launch_online_dp.py --dp-size 2 --tp-size 16 --dp-size-local 1 --dp-rank-start 1 --dp-address $node_p0_ip --dp-rpc-port 16591 --vllm-start-port 9082
     ```
 
+    > **Why do p0 and p1 use different `--vllm-start-port` values (9081 / 9082)?**
+    >
+    > Each prefill node hosts a single local DP rank (`--dp-size-local 1`), so the engine port on a node is simply the `--vllm-start-port` value passed to that node (`launch_online_dp.py` assigns `start_port + i` to local rank `i`). Since p0 and p1 are separate machines, the two ports do **not** have to differ — reusing `9081` on p1 would also work, exactly as the 4×A3 layout in [5.1.3.1](#5131-deployment-on-4-atlas-800-a3) does for all four prefill nodes.
+    >
+    > The values `9081` / `9082` are chosen to mirror the global DP rank of the engine running on each node (rank 0 → `9081`, rank 1 → `9082`), which makes it easier to tell the two engines apart in logs and when debugging. Only p0's port is actually referenced by the request-forwarding proxy, because p1 runs with `--headless` and exposes no API server.
+
 3. Decode node 0
 
     ```shell
